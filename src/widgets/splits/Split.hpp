@@ -14,6 +14,7 @@
 #include <QPointer>
 #include <QShortcut>
 #include <QVBoxLayout>
+#include <QSplitter>
 #include <QWidget>
 
 namespace chatterino {
@@ -67,6 +68,8 @@ public:
     QList<QUuid> getFilters() const;
 
     void setModerationMode(bool value);
+    void toggleFavoriteActivity();
+    bool isFavoriteActivityVisible() const;
     bool getModerationMode() const;
 
     std::optional<bool> checkSpellingOverride() const;
@@ -173,6 +176,9 @@ private:
     SplitHeader *const header_;
     PinnedMessageWidget *const pinnedBanner_;
     ChannelView *const view_;
+    QSplitter *const activitySplitter_;
+    QWidget *const favoriteActivityPane_;
+    ChannelView *const favoriteActivityView_;
     SplitInput *const input_;
     SplitOverlay *const overlay_;
 
