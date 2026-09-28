@@ -99,10 +99,6 @@ Split::Split(QWidget *parent)
     , view_(new ChannelView(this, this, ChannelView::Context::None,
                             getSettings()->scrollbackSplitLimit))
     , activitySplitter_(new QSplitter(Qt::Horizontal, this))
-    , favoriteActivityPane_(new QWidget(activitySplitter_))
-    , favoriteActivityView_(new ChannelView(favoriteActivityPane_, this,
-                                             ChannelView::Context::None,
-                                             getSettings()->scrollbackSplitLimit))
     , input_(new SplitInput(this))
     , overlay_(new SplitOverlay(this))
 {
@@ -116,49 +112,12 @@ Split::Split(QWidget *parent)
 
     this->vbox_->addWidget(this->header_);
     this->vbox_->addWidget(this->pinnedBanner_);
-    auto *favoriteLayout = new QVBoxLayout(this->favoriteActivityPane_);
-    favoriteLayout->setContentsMargins(0, 0, 0, 0);
-    favoriteLayout->setSpacing(0);
-    auto *favoriteHeader = new QWidget(this->favoriteActivityPane_);
-    auto *favoriteHeaderLayout = new QHBoxLayout(favoriteHeader);
-    favoriteHeaderLayout->setContentsMargins(8, 2, 4, 2);
-    auto *favoriteTitle = new QLabel("★ Favorite Activity", favoriteHeader);
-    auto *favoriteClose = new QToolButton(favoriteHeader);
-    favoriteClose->setText("×");
-    favoriteClose->setToolTip("Hide Favorite Activity");
-    favoriteHeaderLayout->addWidget(favoriteTitle, 1);
-    favoriteHeaderLayout->addWidget(favoriteClose);
-    favoriteLayout->addWidget(favoriteHeader);
-    favoriteLayout->addWidget(this->favoriteActivityView_, 1);
-    QObject::connect(favoriteClose, &QToolButton::clicked, this,
-                     &Split::toggleFavoriteActivity);
-
-    this->favoriteActivityView_->setFavoriteActivityProjection(true);
-    this->favoriteActivityView_->setPausable(true);
     this->activitySplitter_->addWidget(this->view_);
-    this->activitySplitter_->addWidget(this->favoriteActivityPane_);
-    this->activitySplitter_->setStretchFactor(0, 7);
-    this->activitySplitter_->setStretchFactor(1, 3);
-    this->favoriteActivityPane_->setVisible(
-        getSettings()->favoriteActivityEnabled.getValue());
-    QTimer::singleShot(0, this, [this] {
-        const auto favoriteWidth = getSettings()->favoriteActivityWidth.getValue();
-        this->activitySplitter_->setSizes(
-            {std::max(100, this->width() - favoriteWidth), favoriteWidth});
-        this->favoriteActivityView_->setLayoutWidthOverride(
-            this->view_->width());
-    });
-    QObject::connect(this->activitySplitter_, &QSplitter::splitterMoved, this,
-                     [this](int, int) {
-                         if (this->favoriteActivityPane_->isVisible())
-                         {
-                             getSettings()->favoriteActivityWidth.setValue(
-                                 this->favoriteActivityPane_->width());
-                             getSettings()->requestSave();
-                         }
-                         this->favoriteActivityView_->setLayoutWidthOverride(
-                             this->view_->width());
-                     });
+    if (getSettings()->favoriteActivityEnabled.getValue())
+    {
+        this->ensureFavoriteActivityPane();
+    }
+
 
     this->vbox_->addWidget(this->activitySplitter_, 1);
     this->vbox_->addWidget(this->input_);
@@ -834,7 +793,10 @@ void Split::setChannel(IndirectChannel newChannel)
     this->channel_ = newChannel;
 
     this->view_->setChannel(newChannel.get());
-    this->favoriteActivityView_->setChannel(newChannel.get());
+    if (this->favoriteActivityView_ != nullptr)
+    {
+        this->favoriteActivityView_->setChannel(newChannel.get());
+    }
 
     this->usermodeChangedConnection_.disconnect();
     this->roomModeChangedConnection_.disconnect();
@@ -908,10 +870,72 @@ void Split::setChannel(IndirectChannel newChannel)
     getApp()->getWindows()->queueSave();
 }
 
+void Split::ensureFavoriteActivityPane()
+{
+    if (this->favoriteActivityPane_ != nullptr)
+    {
+        return;
+    }
+
+    this->favoriteActivityPane_ = new QWidget(this->activitySplitter_);
+    this->favoriteActivityView_ =
+        new ChannelView(this->favoriteActivityPane_, this,
+                        ChannelView::Context::None,
+                        getSettings()->scrollbackSplitLimit);
+
+    auto *favoriteLayout = new QVBoxLayout(this->favoriteActivityPane_);
+    favoriteLayout->setContentsMargins(0, 0, 0, 0);
+    favoriteLayout->setSpacing(0);
+    auto *favoriteHeader = new QWidget(this->favoriteActivityPane_);
+    auto *favoriteHeaderLayout = new QHBoxLayout(favoriteHeader);
+    favoriteHeaderLayout->setContentsMargins(8, 2, 4, 2);
+    auto *favoriteTitle = new QLabel("★ Favorite Activity", favoriteHeader);
+    auto *favoriteClose = new QToolButton(favoriteHeader);
+    favoriteClose->setText("×");
+    favoriteClose->setToolTip("Hide Favorite Activity");
+    favoriteHeaderLayout->addWidget(favoriteTitle, 1);
+    favoriteHeaderLayout->addWidget(favoriteClose);
+    favoriteLayout->addWidget(favoriteHeader);
+    favoriteLayout->addWidget(this->favoriteActivityView_, 1);
+    QObject::connect(favoriteClose, &QToolButton::clicked, this,
+                     &Split::toggleFavoriteActivity);
+
+    this->favoriteActivityView_->setFavoriteActivityProjection(true);
+    this->favoriteActivityView_->setPausable(true);
+    this->favoriteActivityView_->setChannel(this->getChannel().get());
+    this->activitySplitter_->addWidget(this->favoriteActivityPane_);
+    this->activitySplitter_->setStretchFactor(0, 7);
+    this->activitySplitter_->setStretchFactor(1, 3);
+
+    QObject::connect(this->activitySplitter_, &QSplitter::splitterMoved, this,
+                     [this](int, int) {
+                         if (this->favoriteActivityPane_ != nullptr &&
+                             this->favoriteActivityPane_->isVisible())
+                         {
+                             getSettings()->favoriteActivityWidth.setValue(
+                                 this->favoriteActivityPane_->width());
+                             getSettings()->requestSave();
+                         }
+                         if (this->favoriteActivityView_ != nullptr)
+                         {
+                             this->favoriteActivityView_->setLayoutWidthOverride(
+                                 this->view_->width());
+                         }
+                     });
+}
+
 void Split::toggleFavoriteActivity()
 {
-    const bool visible = !this->favoriteActivityPane_->isVisible();
-    this->favoriteActivityPane_->setVisible(visible);
+    const bool visible = !this->isFavoriteActivityVisible();
+    if (visible)
+    {
+        this->ensureFavoriteActivityPane();
+    }
+
+    if (this->favoriteActivityPane_ != nullptr)
+    {
+        this->favoriteActivityPane_->setVisible(visible);
+    }
     getSettings()->favoriteActivityEnabled.setValue(visible);
     getSettings()->requestSave();
     if (visible)
@@ -925,7 +949,8 @@ void Split::toggleFavoriteActivity()
 
 bool Split::isFavoriteActivityVisible() const
 {
-    return this->favoriteActivityPane_->isVisible();
+    return this->favoriteActivityPane_ != nullptr &&
+           this->favoriteActivityPane_->isVisible();
 }
 
 void Split::setModerationMode(bool value)
