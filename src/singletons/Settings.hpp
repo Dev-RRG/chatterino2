@@ -490,6 +490,13 @@ public:
         {},
     };
 
+    // Favorite Activity users are stored as tab-separated Twitch user ID,
+    // login name, and display name. Twitch login/display names cannot contain tabs.
+    ChatterinoSetting<QStringList> favoriteActivityUsers = {
+        "/favoriteActivity/users",
+        {},
+    };
+
     /// Links
     BoolSetting linksDoubleClickOnly = {"/links/doubleClickToOpen", false};
     BoolSetting linkInfoTooltip = {"/links/linkInfoTooltip", false};
