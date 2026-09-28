@@ -496,6 +496,8 @@ public:
         "/favoriteActivity/users",
         {},
     };
+    BoolSetting favoriteActivityEnabled = {"/favoriteActivity/enabled", false};
+    IntSetting favoriteActivityWidth = {"/favoriteActivity/width", 360};
 
     /// Links
     BoolSetting linksDoubleClickOnly = {"/links/doubleClickToOpen", false};
