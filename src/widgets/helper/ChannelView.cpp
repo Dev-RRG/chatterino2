@@ -1685,9 +1685,10 @@ void ChannelView::drawMessages(QPainter &painter, const QRect &area)
             if (this->favoriteActivityProjection_)
             {
                 const auto &msg = layout->getMessagePtr();
+                const auto favoriteUsers =
+                    getSettings()->favoriteActivityUsers.getValue();
                 paintThisRow = std::any_of(
-                    getSettings()->favoriteActivityUsers.getValue().cbegin(),
-                    getSettings()->favoriteActivityUsers.getValue().cend(),
+                    favoriteUsers.cbegin(), favoriteUsers.cend(),
                     [&msg](const QString &entry) {
                         const auto favoriteID = entry.section('\\t', 0, 0);
                         const auto favoriteLogin = entry.section('\\t', 1, 1);
