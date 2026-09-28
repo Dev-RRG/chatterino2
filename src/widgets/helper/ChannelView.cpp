@@ -2632,6 +2632,50 @@ void ChannelView::addContextMenuItems(
     // Add Twitch-specific link options if the element clicked contains a link detected as a Twitch username
     this->addTwitchLinkContextMenuItems(menu, hoveredElement);
 
+    // Favorite Activity: allow the author of the clicked message to be
+    // added to/removed from the persistent favorites list. Restricting this
+    // to the message author's username avoids treating @mentions as authors.
+    if (hoveredElement != nullptr &&
+        hoveredElement->getFlags().has(MessageElementFlag::Username))
+    {
+        const auto &message = layout->getMessage();
+        const auto &link = hoveredElement->getLink();
+        if (!message->userID.isEmpty() && link.type == Link::UserInfo &&
+            QString::compare(link.value, message->loginName,
+                             Qt::CaseInsensitive) == 0)
+        {
+            const auto favoriteKey = message->userID + "\\t" +
+                                     message->loginName + "\\t" +
+                                     message->displayName;
+            const auto favorites =
+                getSettings()->favoriteActivityUsers.getValue();
+            auto existing = std::find_if(
+                favorites.cbegin(), favorites.cend(),
+                [&message](const QString &entry) {
+                    return entry.section('\\t', 0, 0) == message->userID;
+                });
+            const bool isFavorite = existing != favorites.cend();
+
+            menu->addSeparator();
+            menu->addAction(
+                isFavorite ? "★ Remove from Favorite Activity"
+                           : "★ Add to Favorite Activity",
+                [favoriteKey, userID = message->userID, isFavorite] {
+                    auto users =
+                        getSettings()->favoriteActivityUsers.getValue();
+                    users.removeIf([&userID](const QString &entry) {
+                        return entry.section('\\t', 0, 0) == userID;
+                    });
+                    if (!isFavorite)
+                    {
+                        users.append(favoriteKey);
+                    }
+                    getSettings()->favoriteActivityUsers.setValue(users);
+                    getSettings()->requestSave();
+                });
+        }
+    }
+
     // Add hidden options (e.g. copy message ID) if the user held down Shift
     addHiddenContextMenuItems(menu, hoveredElement, layout, event);
 
