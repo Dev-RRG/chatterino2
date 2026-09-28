@@ -1690,8 +1690,8 @@ void ChannelView::drawMessages(QPainter &painter, const QRect &area)
                 paintThisRow = std::any_of(
                     favoriteUsers.cbegin(), favoriteUsers.cend(),
                     [&msg](const QString &entry) {
-                        const auto favoriteID = entry.section('\\t', 0, 0);
-                        const auto favoriteLogin = entry.section('\\t', 1, 1);
+                        const auto favoriteID = entry.section(QChar('\t'), 0, 0);
+                        const auto favoriteLogin = entry.section(QChar('\t'), 1, 1);
                         return (!msg->userID.isEmpty() &&
                                 favoriteID == msg->userID) ||
                                (!msg->loginName.isEmpty() &&
@@ -2675,15 +2675,15 @@ void ChannelView::addContextMenuItems(
             QString::compare(link.value, message->loginName,
                              Qt::CaseInsensitive) == 0)
         {
-            const auto favoriteKey = message->userID + "\\t" +
-                                     message->loginName + "\\t" +
+            const auto favoriteKey = message->userID + QStringLiteral("\t") +
+                                     message->loginName + QStringLiteral("\t") +
                                      message->displayName;
             const auto favorites =
                 getSettings()->favoriteActivityUsers.getValue();
             auto existing = std::find_if(
                 favorites.cbegin(), favorites.cend(),
                 [&message](const QString &entry) {
-                    return entry.section('\\t', 0, 0) == message->userID;
+                    return entry.section(QChar('\t'), 0, 0) == message->userID;
                 });
             const bool isFavorite = existing != favorites.cend();
 
@@ -2695,7 +2695,7 @@ void ChannelView::addContextMenuItems(
                     auto users =
                         getSettings()->favoriteActivityUsers.getValue();
                     users.removeIf([&userID](const QString &entry) {
-                        return entry.section('\\t', 0, 0) == userID;
+                        return entry.section(QChar('\t'), 0, 0) == userID;
                     });
                     if (!isFavorite)
                     {
