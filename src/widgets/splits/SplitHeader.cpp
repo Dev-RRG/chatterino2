@@ -464,6 +464,10 @@ std::unique_ptr<QMenu> SplitHeader::createMainMenu()
     menu->addAction("Close",
                     h->getDisplaySequence(HotkeyCategory::Split, "delete"),
                     this->split_, &Split::deleteFromContainer);
+    menu->addAction(this->split_->isFavoriteActivityVisible()
+                        ? "★ Hide Favorite Activity"
+                        : "★ Show Favorite Activity",
+                    this->split_, &Split::toggleFavoriteActivity);
     menu->addSeparator();
     menu->addAction(
         "Popup",
