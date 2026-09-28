@@ -902,7 +902,7 @@ void Split::ensureFavoriteActivityPane()
 
     this->favoriteActivityView_->setFavoriteActivityProjection(true);
     this->favoriteActivityView_->setPausable(true);
-    this->favoriteActivityView_->setChannel(this->getChannel().get());
+    this->favoriteActivityView_->setChannel(this->getChannel());
     this->activitySplitter_->addWidget(this->favoriteActivityPane_);
     this->activitySplitter_->setStretchFactor(0, 7);
     this->activitySplitter_->setStretchFactor(1, 3);
