@@ -163,6 +163,7 @@ private:
     void refreshModerationMode();
 
     void refreshInputState(const QString &inputText);
+    void ensureFavoriteActivityPane();
 
     IndirectChannel channel_;
 
@@ -177,8 +178,8 @@ private:
     PinnedMessageWidget *const pinnedBanner_;
     ChannelView *const view_;
     QSplitter *const activitySplitter_;
-    QWidget *const favoriteActivityPane_;
-    ChannelView *const favoriteActivityView_;
+    QWidget *favoriteActivityPane_{};
+    ChannelView *favoriteActivityView_{};
     SplitInput *const input_;
     SplitOverlay *const overlay_;
 
