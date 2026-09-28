@@ -116,6 +116,11 @@ public:
     void copySelectedText();
 
     void setEnableScrollingToBottom(bool);
+
+    /// Favorite Activity projection: preserve every timeline row while only
+    /// painting activity associated with a favorited user.
+    void setFavoriteActivityProjection(bool enabled);
+    void setLayoutWidthOverride(std::optional<int> width);
     bool getEnableScrollingToBottom() const;
     void setOverrideFlags(std::optional<MessageElementFlags> value);
     const std::optional<MessageElementFlags> &getOverrideFlags() const;
@@ -342,6 +347,9 @@ private:
 
     void updateID();
     ChannelViewID id_{};
+
+    bool favoriteActivityProjection_ = false;
+    std::optional<int> layoutWidthOverride_;
 
     bool layoutQueued_ = false;
     bool bufferInvalidationQueued_ = false;
