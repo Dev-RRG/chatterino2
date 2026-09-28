@@ -893,6 +893,18 @@ void ChannelView::copySelectedText()
     crossPlatformCopy(this->getSelectedText());
 }
 
+void ChannelView::setFavoriteActivityProjection(bool enabled)
+{
+    this->favoriteActivityProjection_ = enabled;
+    this->queueUpdate();
+}
+
+void ChannelView::setLayoutWidthOverride(std::optional<int> width)
+{
+    this->layoutWidthOverride_ = width;
+    this->queueLayout(true);
+}
+
 void ChannelView::setEnableScrollingToBottom(bool value)
 {
     this->enableScrollingToBottom_ = value;
@@ -1669,7 +1681,25 @@ void ChannelView::drawMessages(QPainter &painter, const QRect &area)
             areaContainsY(ctx.y + layout->getHeight()) ||
             (ctx.y < area.y() && layout->getHeight() > area.height()))
         {
-            auto paintResult = layout->paint(ctx);
+            bool paintThisRow = true;
+            if (this->favoriteActivityProjection_)
+            {
+                const auto &msg = layout->getMessagePtr();
+                paintThisRow = std::any_of(
+                    getSettings()->favoriteActivityUsers.getValue().cbegin(),
+                    getSettings()->favoriteActivityUsers.getValue().cend(),
+                    [&msg](const QString &entry) {
+                        const auto favoriteID = entry.section('\\t', 0, 0);
+                        const auto favoriteLogin = entry.section('\\t', 1, 1);
+                        return (!msg->userID.isEmpty() &&
+                                favoriteID == msg->userID) ||
+                               (!msg->loginName.isEmpty() &&
+                                QString::compare(favoriteLogin, msg->loginName,
+                                                 Qt::CaseInsensitive) == 0);
+                    });
+            }
+            auto paintResult = paintThisRow ? layout->paint(ctx)
+                                            : MessagePaintResult{};
             if (paintResult.hasAnimatedElements)
             {
                 if (animationArea.isNull())
@@ -3337,6 +3367,10 @@ bool ChannelView::tryGetMessageAt(QPointF p,
 
 int ChannelView::getLayoutWidth() const
 {
+    if (this->layoutWidthOverride_)
+    {
+        return *this->layoutWidthOverride_;
+    }
     if (this->scrollBar_->isVisible())
     {
         return int(this->width() - SCROLLBAR_PADDING * this->scale());
