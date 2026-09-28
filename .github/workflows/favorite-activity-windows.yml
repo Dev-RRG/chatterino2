@@ -1,0 +1,72 @@
+name: Favorite Activity Windows Build
+
+on:
+  push:
+    branches:
+      - feature/favorite-activity
+  workflow_dispatch:
+
+env:
+  CONAN_VERSION: 2.28.1
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb
+        with:
+          cache: true
+          modules: qtimageformats
+          version: 6.8.3
+      - uses: Chatterino/msvc-dev-cmd@24444121cb2805a7adbd23d0f4455d0916af896b
+      - name: Install Conan
+        shell: powershell
+        run: |
+          python3 -c "import site; import sys; print(f'{site.USER_BASE}\\Python{sys.version_info.major}{sys.version_info.minor}\\Scripts')" >> "$env:GITHUB_PATH"
+          pip3 install --user "conan==$env:CONAN_VERSION"
+          conan profile detect -f
+      - name: Install dependencies
+        shell: powershell
+        run: |
+          mkdir build
+          cd build
+          conan install .. `
+            -s build_type=RelWithDebInfo `
+            -c tools.cmake.cmaketoolchain:generator="NMake Makefiles" `
+            -b missing `
+            --output-folder=. `
+            -o with_openssl3=True
+      - name: Build
+        shell: powershell
+        run: |
+          cd build
+          cmake `
+            -G"NMake Makefiles" `
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+            -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake" `
+            -DUSE_PRECOMPILED_HEADERS=ON `
+            -DBUILD_WITH_CRASHPAD=Off `
+            -DCHATTERINO_LTO=Off `
+            -DCHATTERINO_NIGHTLY_BUILD=On `
+            -DFORCE_JSON_GENERATION=Off `
+            -DCHATTERINO_SPELLCHECK=On `
+            ..
+          set cl=/MP
+          nmake /S /NOLOGO
+      - name: Package
+        shell: powershell
+        run: |
+          cd build
+          windeployqt bin/chatterino.exe --release --no-compiler-runtime --no-translations --no-opengl-sw --force-openssl --dir Chatterino2/
+          cp bin/chatterino.exe Chatterino2/
+          ..\.CI\deploy-crt.ps1 Chatterino2
+          7z a FavoriteActivity-Chatterino-Windows-x64.zip Chatterino2/
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: FavoriteActivity-Chatterino-Windows-x64
+          path: build/FavoriteActivity-Chatterino-Windows-x64.zip
