@@ -890,15 +890,24 @@ void Split::ensureFavoriteActivityPane()
     auto *favoriteHeaderLayout = new QHBoxLayout(favoriteHeader);
     favoriteHeaderLayout->setContentsMargins(8, 2, 4, 2);
     auto *favoriteTitle = new QLabel("★ Favorite Activity", favoriteHeader);
+    this->favoriteActivitySyncButton_ = new QToolButton(favoriteHeader);
+    this->favoriteActivitySyncButton_->setCheckable(true);
+    this->favoriteActivitySyncButton_->setToolTip(
+        "Keep Favorite Activity at the same timeline position as chat");
     auto *favoriteClose = new QToolButton(favoriteHeader);
     favoriteClose->setText("×");
     favoriteClose->setToolTip("Hide Favorite Activity");
     favoriteHeaderLayout->addWidget(favoriteTitle, 1);
+    favoriteHeaderLayout->addWidget(this->favoriteActivitySyncButton_);
     favoriteHeaderLayout->addWidget(favoriteClose);
     favoriteLayout->addWidget(favoriteHeader);
     favoriteLayout->addWidget(this->favoriteActivityView_, 1);
     QObject::connect(favoriteClose, &QToolButton::clicked, this,
                      &Split::toggleFavoriteActivity);
+    QObject::connect(this->favoriteActivitySyncButton_, &QToolButton::clicked,
+                     this, [this](bool checked) {
+                         this->setFavoriteActivityScrollSync(checked);
+                     });
 
     this->favoriteActivityView_->setFavoriteActivityProjection(true);
     this->favoriteActivityView_->setPausable(true);
@@ -906,6 +915,40 @@ void Split::ensureFavoriteActivityPane()
     this->activitySplitter_->addWidget(this->favoriteActivityPane_);
     this->activitySplitter_->setStretchFactor(0, 7);
     this->activitySplitter_->setStretchFactor(1, 3);
+
+    const auto syncScrollbars = [this](ChannelView *source,
+                                       ChannelView *target) {
+        if (!getSettings()->favoriteActivityScrollSync.getValue() ||
+            this->favoriteActivityScrollSyncGuard_ ||
+            source == nullptr || target == nullptr)
+        {
+            return;
+        }
+
+        auto &sourceBar = source->getScrollBar();
+        auto &targetBar = target->getScrollBar();
+        this->favoriteActivityScrollSyncGuard_ = true;
+        const qreal relative = sourceBar.getDesiredValue() -
+                               sourceBar.getMinimum();
+        targetBar.setDesiredValue(targetBar.getMinimum() + relative);
+        this->favoriteActivityScrollSyncGuard_ = false;
+    };
+
+    this->view_->getScrollBar().getDesiredValueChanged().connect(
+        [this, syncScrollbars] {
+            syncScrollbars(this->view_, this->favoriteActivityView_);
+        },
+        this->signalHolder_);
+    this->favoriteActivityView_->getScrollBar()
+        .getDesiredValueChanged()
+        .connect(
+            [this, syncScrollbars] {
+                syncScrollbars(this->favoriteActivityView_, this->view_);
+            },
+            this->signalHolder_);
+
+    this->setFavoriteActivityScrollSync(
+        getSettings()->favoriteActivityScrollSync.getValue());
 
     QObject::connect(this->activitySplitter_, &QSplitter::splitterMoved, this,
                      [this](int, int) {
@@ -922,6 +965,30 @@ void Split::ensureFavoriteActivityPane()
                                  this->view_->width());
                          }
                      });
+}
+
+void Split::setFavoriteActivityScrollSync(bool enabled)
+{
+    getSettings()->favoriteActivityScrollSync.setValue(enabled);
+    getSettings()->requestSave();
+
+    if (this->favoriteActivitySyncButton_ != nullptr)
+    {
+        this->favoriteActivitySyncButton_->setChecked(enabled);
+        this->favoriteActivitySyncButton_->setText(enabled ? "🔗 Synced"
+                                                           : "⛓ Unlinked");
+    }
+
+    if (enabled && this->favoriteActivityView_ != nullptr)
+    {
+        auto &source = this->view_->getScrollBar();
+        auto &target = this->favoriteActivityView_->getScrollBar();
+        const qreal relative =
+            source.getDesiredValue() - source.getMinimum();
+        this->favoriteActivityScrollSyncGuard_ = true;
+        target.setDesiredValue(target.getMinimum() + relative);
+        this->favoriteActivityScrollSyncGuard_ = false;
+    }
 }
 
 void Split::toggleFavoriteActivity()
