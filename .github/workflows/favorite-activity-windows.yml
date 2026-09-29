@@ -50,7 +50,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=RelWithDebInfo `
             -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake" `
             -DUSE_PRECOMPILED_HEADERS=ON `
-            -DBUILD_WITH_CRASHPAD=Off `
+            -DBUILD_WITH_CRASHPAD=On `
             -DCHATTERINO_LTO=Off `
             -DCHATTERINO_NIGHTLY_BUILD=On `
             -DFORCE_JSON_GENERATION=Off `
@@ -58,6 +58,14 @@ jobs:
             ..
           set cl=/MP
           nmake /S /NOLOGO
+      - name: Build crash handler and symbols
+        shell: powershell
+        run: |
+          cd build
+          nmake /S /NOLOGO chatterino-crash-handler
+          mkdir Chatterino2/crashpad
+          cp bin/crashpad/crashpad-handler.exe Chatterino2/crashpad/crashpad-handler.exe
+          7z a bin/FavoriteActivity-Chatterino-Windows-x64-symbols.pdb.7z bin/chatterino.pdb
       - name: Package
         shell: powershell
         run: |
@@ -70,3 +78,7 @@ jobs:
         with:
           name: FavoriteActivity-Chatterino-Windows-x64
           path: build/FavoriteActivity-Chatterino-Windows-x64.zip
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: FavoriteActivity-Chatterino-Windows-x64-symbols
+          path: build/bin/FavoriteActivity-Chatterino-Windows-x64-symbols.pdb.7z
