@@ -934,18 +934,16 @@ void Split::ensureFavoriteActivityPane()
         this->favoriteActivityScrollSyncGuard_ = false;
     };
 
-    this->view_->getScrollBar().getDesiredValueChanged().connect(
+    this->signalHolder_.managedConnect(
+        this->view_->getScrollBar().getDesiredValueChanged(),
         [this, syncScrollbars] {
             syncScrollbars(this->view_, this->favoriteActivityView_);
-        },
-        this->signalHolder_);
-    this->favoriteActivityView_->getScrollBar()
-        .getDesiredValueChanged()
-        .connect(
-            [this, syncScrollbars] {
-                syncScrollbars(this->favoriteActivityView_, this->view_);
-            },
-            this->signalHolder_);
+        });
+    this->signalHolder_.managedConnect(
+        this->favoriteActivityView_->getScrollBar().getDesiredValueChanged(),
+        [this, syncScrollbars] {
+            syncScrollbars(this->favoriteActivityView_, this->view_);
+        });
 
     this->setFavoriteActivityScrollSync(
         getSettings()->favoriteActivityScrollSync.getValue());
