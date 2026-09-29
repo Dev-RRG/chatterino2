@@ -27,6 +27,7 @@ class SplitOverlay;
 class PinnedMessageWidget;
 class SelectChannelDialog;
 class OverlayWindow;
+class QToolButton;
 
 struct SplitDescriptor;
 
@@ -164,6 +165,7 @@ private:
 
     void refreshInputState(const QString &inputText);
     void ensureFavoriteActivityPane();
+    void setFavoriteActivityScrollSync(bool enabled);
 
     IndirectChannel channel_;
 
@@ -180,6 +182,8 @@ private:
     QSplitter *const activitySplitter_;
     QWidget *favoriteActivityPane_{};
     ChannelView *favoriteActivityView_{};
+    QToolButton *favoriteActivitySyncButton_{};
+    bool favoriteActivityScrollSyncGuard_{};
     SplitInput *const input_;
     SplitOverlay *const overlay_;
 
