@@ -15,6 +15,7 @@
 #include <QShortcut>
 #include <QVBoxLayout>
 #include <QSplitter>
+#include <QToolButton>
 #include <QWidget>
 
 namespace chatterino {
@@ -27,7 +28,6 @@ class SplitOverlay;
 class PinnedMessageWidget;
 class SelectChannelDialog;
 class OverlayWindow;
-class QToolButton;
 
 struct SplitDescriptor;
 
