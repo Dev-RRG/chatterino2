@@ -497,6 +497,7 @@ public:
         {},
     };
     BoolSetting favoriteActivityEnabled = {"/favoriteActivity/enabled", false};
+    BoolSetting favoriteActivityScrollSync = {"/favoriteActivity/scrollSync", true};
     IntSetting favoriteActivityWidth = {"/favoriteActivity/width", 360};
 
     /// Links
