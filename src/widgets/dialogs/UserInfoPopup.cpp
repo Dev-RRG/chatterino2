@@ -424,6 +424,11 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
 
         user.emplace<LabelButton>("Add notes", this)
             .assign(&this->ui_.notesAdd);
+        auto favoriteActivity =
+            user.emplace<LabelButton>("☆ Favorite Activity", this)
+                .assign(&this->ui_.favoriteActivity);
+        favoriteActivity->setToolTip(
+            "Show this user's activity in the Favorite Activity pane");
         auto usercard = user.emplace<LabelButton>("Usercard", this)
                             .assign(&this->ui_.usercardLabel);
         auto mod = user.emplace<PixmapButton>(this);
@@ -440,6 +445,9 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
         unvip->setScaleIndependentSize(30, 30);
 
         user->addStretch(1);
+
+        QObject::connect(favoriteActivity.getElement(), &Button::leftClicked,
+                         [this] { this->toggleFavoriteActivityUser(); });
 
         QObject::connect(usercard.getElement(), &Button::leftClicked, [this] {
             QDesktopServices::openUrl("https://www.twitch.tv/popout/" +
@@ -850,6 +858,7 @@ void UserInfoPopup::setData(const QString &name,
     this->ui_.nameLabel->setProperty("copy-text", name);
 
     this->updateUserData();
+    this->updateFavoriteActivityButton();
 
     this->userStateChanged_.invoke();
 
@@ -866,6 +875,68 @@ void UserInfoPopup::setData(const QString &name,
         // not a normal twitch channel, the url opened by the button will be invalid, so hide the button
         this->ui_.usercardLabel->hide();
     }
+}
+
+void UserInfoPopup::updateFavoriteActivityButton()
+{
+    if (this->ui_.favoriteActivity == nullptr)
+    {
+        return;
+    }
+
+    if (this->userId_.isEmpty())
+    {
+        this->ui_.favoriteActivity->setText("☆ Favorite Activity");
+        this->ui_.favoriteActivity->setEnabled(false);
+        return;
+    }
+
+    const auto favorites = getSettings()->favoriteActivityUsers.getValue();
+    const bool isFavorite =
+        std::any_of(favorites.cbegin(), favorites.cend(),
+                    [this](const QString &entry) {
+                        return entry.section(QChar('\t'), 0, 0) ==
+                               this->userId_;
+                    });
+
+    this->ui_.favoriteActivity->setEnabled(true);
+    this->ui_.favoriteActivity->setText(
+        isFavorite ? "★ Favorited" : "☆ Favorite Activity");
+    this->ui_.favoriteActivity->setToolTip(
+        isFavorite ? "Remove this user from Favorite Activity"
+                   : "Add this user to Favorite Activity");
+}
+
+void UserInfoPopup::toggleFavoriteActivityUser()
+{
+    if (this->userId_.isEmpty())
+    {
+        return;
+    }
+
+    auto favorites = getSettings()->favoriteActivityUsers.getValue();
+    const auto existing =
+        std::find_if(favorites.cbegin(), favorites.cend(),
+                     [this](const QString &entry) {
+                         return entry.section(QChar('\t'), 0, 0) ==
+                                this->userId_;
+                     });
+    const bool isFavorite = existing != favorites.cend();
+
+    favorites.removeIf([this](const QString &entry) {
+        return entry.section(QChar('\t'), 0, 0) == this->userId_;
+    });
+
+    if (!isFavorite)
+    {
+        favorites.append(this->userId_ + QStringLiteral("\t") +
+                         this->userName_ + QStringLiteral("\t") +
+                         this->ui_.nameLabel->getText());
+    }
+
+    getSettings()->favoriteActivityUsers.setValue(favorites);
+    getSettings()->requestSave();
+    this->updateFavoriteActivityButton();
 }
 
 void UserInfoPopup::updateLatestMessages()
@@ -947,6 +1018,7 @@ void UserInfoPopup::updateUserData()
 
         this->userId_ = user.id;
         this->updateNotes();
+        this->updateFavoriteActivityButton();
         this->avatarUrl_ = user.profileImageUrl;
 
         // copyable button for login name of users with a localized username
