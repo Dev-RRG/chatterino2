@@ -50,6 +50,8 @@ private:
     void updateUserData();
     void updateLatestMessages();
     void updateNotes();
+    void updateFavoriteActivityButton();
+    void toggleFavoriteActivityUser();
 
     void loadAvatar(const QUrl &url);
     bool isMod_{};
@@ -97,6 +99,7 @@ private:
         QCheckBox *ignoreHighlights = nullptr;
         MarkdownLabel *notesPreview = nullptr;
         LabelButton *notesAdd = nullptr;
+        LabelButton *favoriteActivity = nullptr;
 
         Label *noMessagesLabel = nullptr;
         ChannelView *latestMessages = nullptr;
