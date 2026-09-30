@@ -21,58 +21,9 @@ jobs:
       - name: Apply Favorite Activity sync correction
         shell: powershell
         run: |
-          $path = "src/widgets/splits/Split.cpp"
-          $text = Get-Content $path -Raw
-          $old = @'
-          const qreal relative = sourceBar.getDesiredValue() -
-                                 sourceBar.getMinimum();
-          targetBar.setDesiredValue(targetBar.getMinimum() + relative);
-'@
-          $new = @'
-          // The two panes can have different viewport heights. At the live
-          // edge, synchronize semantic bottom state rather than a numeric
-          // scrollbar position so Favorite Activity cannot lag a few rows.
-          if (sourceBar.isAtBottom())
-          {
-              targetBar.scrollToBottom(false);
-          }
-          else
-          {
-              const qreal relative = sourceBar.getCurrentValue() -
-                                     sourceBar.getMinimum();
-              targetBar.setDesiredValue(targetBar.getMinimum() + relative);
-          }
-'@
-          if (-not $text.Contains($old)) { throw "Primary sync block not found" }
-          $text = $text.Replace($old, $new)
-          $text = $text.Replace('this->view_->getScrollBar().getDesiredValueChanged()', 'this->view_->getScrollBar().getCurrentValueChanged()')
-          $text = $text.Replace('this->favoriteActivityView_->getScrollBar().getDesiredValueChanged()', 'this->favoriteActivityView_->getScrollBar().getCurrentValueChanged()')
-          $oldEnable = @'
-          const qreal relative =
-              source.getDesiredValue() - source.getMinimum();
-          this->favoriteActivityScrollSyncGuard_ = true;
-          target.setDesiredValue(target.getMinimum() + relative);
-          this->favoriteActivityScrollSyncGuard_ = false;
-'@
-          $newEnable = @'
-          this->favoriteActivityScrollSyncGuard_ = true;
-          if (source.isAtBottom())
-          {
-              target.scrollToBottom(false);
-          }
-          else
-          {
-              const qreal relative =
-                  source.getCurrentValue() - source.getMinimum();
-              target.setDesiredValue(target.getMinimum() + relative);
-          }
-          this->favoriteActivityScrollSyncGuard_ = false;
-'@
-          if (-not $text.Contains($oldEnable)) { throw "Enable-sync block not found" }
-          $text = $text.Replace($oldEnable, $newEnable)
-          Set-Content $path $text -NoNewline
+          git apply --recount --check .patches/favorite-activity-scroll-sync.patch
+          git apply --recount .patches/favorite-activity-scroll-sync.patch
           git diff --check
-          git diff -- $path
       - uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb
         with:
           cache: true
