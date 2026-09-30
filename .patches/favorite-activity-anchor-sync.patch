@@ -1,0 +1,108 @@
+diff --git a/src/widgets/helper/ChannelView.hpp b/src/widgets/helper/ChannelView.hpp
+--- a/src/widgets/helper/ChannelView.hpp
++++ b/src/widgets/helper/ChannelView.hpp
+@@
+     void queueUpdate();
+     void queueUpdate(const QRect &area);
+     Scrollbar &getScrollBar();
++
++    struct ScrollAnchor {
++        MessagePtr message;
++        qreal fraction = 0.0;
++    };
++
++    /// Returns the message currently anchoring the top of the viewport and
++    /// the fractional offset within that message. Unlike raw scrollbar
++    /// positions, this remains meaningful when two views have slightly
++    /// different message-buffer indices.
++    std::optional<ScrollAnchor> getScrollAnchor();
++
++    /// Aligns this view to the same message/fraction returned by
++    /// getScrollAnchor(). Returns false if the message is not in this view.
++    bool scrollToAnchor(const ScrollAnchor &anchor);
+ 
+     QString getSelectedText();
+diff --git a/src/widgets/helper/ChannelView.cpp b/src/widgets/helper/ChannelView.cpp
+--- a/src/widgets/helper/ChannelView.cpp
++++ b/src/widgets/helper/ChannelView.cpp
+@@
+ void ChannelView::setLayoutWidthOverride(std::optional<int> width)
+ {
+     this->layoutWidthOverride_ = width;
+     this->queueLayout(true);
+ }
++
++std::optional<ChannelView::ScrollAnchor> ChannelView::getScrollAnchor()
++{
++    auto &messages = this->getMessagesSnapshot();
++    if (messages.empty())
++    {
++        return std::nullopt;
++    }
++
++    const qreal relative = this->scrollBar_->getRelativeCurrentValue();
++    const auto index = static_cast<size_t>(std::floor(relative));
++    if (index >= messages.size())
++    {
++        return std::nullopt;
++    }
++
++    return ScrollAnchor{messages[index]->getMessagePtr(),
++                        relative - std::floor(relative)};
++}
++
++bool ChannelView::scrollToAnchor(const ScrollAnchor &anchor)
++{
++    auto &messages = this->getMessagesSnapshot();
++    for (size_t index = 0; index < messages.size(); ++index)
++    {
++        if (messages[index]->getMessagePtr() == anchor.message)
++        {
++            this->scrollBar_->setDesiredValue(
++                this->scrollBar_->getMinimum() + static_cast<qreal>(index) +
++                std::clamp(anchor.fraction, qreal(0.0), qreal(0.999999)));
++            return true;
++        }
++    }
++    return false;
++}
+ 
+ void ChannelView::setEnableScrollingToBottom(bool value)
+ {
+diff --git a/src/widgets/splits/Split.cpp b/src/widgets/splits/Split.cpp
+--- a/src/widgets/splits/Split.cpp
++++ b/src/widgets/splits/Split.cpp
+@@
+         if (sourceBar.isAtBottom())
+         {
+             targetBar.scrollToBottom(false);
+         }
+         else
+         {
+-            const qreal relative = sourceBar.getCurrentValue() -
+-                                   sourceBar.getMinimum();
+-            targetBar.setDesiredValue(targetBar.getMinimum() + relative);
++            const auto anchor = source->getScrollAnchor();
++            if (anchor.has_value())
++            {
++                target->scrollToAnchor(*anchor);
++            }
+         }
+         this->favoriteActivityScrollSyncGuard_ = false;
+@@
+         if (source.isAtBottom())
+         {
+             target.scrollToBottom(false);
+         }
+         else
+         {
+-            const qreal relative =
+-                source.getCurrentValue() - source.getMinimum();
+-            target.setDesiredValue(target.getMinimum() + relative);
++            const auto anchor = this->view_->getScrollAnchor();
++            if (anchor.has_value())
++            {
++                this->favoriteActivityView_->scrollToAnchor(*anchor);
++            }
+         }
+         this->favoriteActivityScrollSyncGuard_ = false;
