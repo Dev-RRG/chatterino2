@@ -1,0 +1,63 @@
+diff --git a/src/widgets/splits/Split.cpp b/src/widgets/splits/Split.cpp
+--- a/src/widgets/splits/Split.cpp
++++ b/src/widgets/splits/Split.cpp
+@@ -934,10 +934,18 @@ void Split::ensureFavoriteActivityPane()
+ 
+         auto &sourceBar = source->getScrollBar();
+         auto &targetBar = target->getScrollBar();
+         this->favoriteActivityScrollSyncGuard_ = true;
+-        const qreal relative = sourceBar.getDesiredValue() -
+-                               sourceBar.getMinimum();
+-        targetBar.setDesiredValue(targetBar.getMinimum() + relative);
++
++        // At live edge the two views have different page sizes because the
++        // Favorite Activity header consumes vertical space. Synchronizing the
++        // numeric top position would therefore leave the companion a few rows
++        // behind and permanently show its "More messages below" control.
++        if (sourceBar.isAtBottom())
++        {
++            targetBar.scrollToBottom(false);
++        }
++        else
++        {
++            const qreal relative = sourceBar.getCurrentValue() -
++                                   sourceBar.getMinimum();
++            targetBar.setDesiredValue(targetBar.getMinimum() + relative);
++        }
+         this->favoriteActivityScrollSyncGuard_ = false;
+     };
+ 
+@@ -945,13 +953,13 @@ void Split::ensureFavoriteActivityPane()
+     this->signalHolder_.managedConnect(
+-        this->view_->getScrollBar().getDesiredValueChanged(),
++        this->view_->getScrollBar().getCurrentValueChanged(),
+         [this, syncScrollbars] {
+             syncScrollbars(this->view_, this->favoriteActivityView_);
+         });
+     this->signalHolder_.managedConnect(
+-        this->favoriteActivityView_->getScrollBar().getDesiredValueChanged(),
++        this->favoriteActivityView_->getScrollBar().getCurrentValueChanged(),
+         [this, syncScrollbars] {
+             syncScrollbars(this->favoriteActivityView_, this->view_);
+         });
+@@ -1000,10 +1008,16 @@ void Split::setFavoriteActivityScrollSync(bool enabled)
+     {
+         auto &source = this->view_->getScrollBar();
+         auto &target = this->favoriteActivityView_->getScrollBar();
+-        const qreal relative =
+-            source.getDesiredValue() - source.getMinimum();
+         this->favoriteActivityScrollSyncGuard_ = true;
+-        target.setDesiredValue(target.getMinimum() + relative);
++        if (source.isAtBottom())
++        {
++            target.scrollToBottom(false);
++        }
++        else
++        {
++            const qreal relative =
++                source.getCurrentValue() - source.getMinimum();
++            target.setDesiredValue(target.getMinimum() + relative);
++        }
+         this->favoriteActivityScrollSyncGuard_ = false;
+     }
+ }
