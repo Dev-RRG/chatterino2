@@ -55,6 +55,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QToolButton>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include <functional>
@@ -113,14 +114,21 @@ Split::Split(QWidget *parent)
     this->vbox_->addWidget(this->header_);
     this->vbox_->addWidget(this->pinnedBanner_);
     this->activitySplitter_->addWidget(this->view_);
-    if (getSettings()->favoriteActivityEnabled.getValue())
-    {
-        this->ensureFavoriteActivityPane();
-    }
-
+    // Do not construct the companion ChannelView while Split itself is still
+    // being constructed. A persisted "visible" setting can otherwise recreate
+    // the Favorite Activity pane too early during application startup.
+    const bool restoreFavoriteActivity =
+        getSettings()->favoriteActivityEnabled.getValue();
 
     this->vbox_->addWidget(this->activitySplitter_, 1);
     this->vbox_->addWidget(this->input_);
+
+    if (restoreFavoriteActivity)
+    {
+        QTimer::singleShot(0, this, [this] {
+            this->ensureFavoriteActivityPane();
+        });
+    }
 
     this->input_->ui_.textEdit->installEventFilter(parent);
 
