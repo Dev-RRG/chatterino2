@@ -18,11 +18,13 @@ jobs:
           submodules: recursive
           fetch-depth: 0
           persist-credentials: false
-      - name: Apply Favorite Activity sync correction
+      - name: Apply Favorite Activity synchronization corrections
         shell: powershell
         run: |
           git apply --recount --check .patches/favorite-activity-scroll-sync.patch
           git apply --recount .patches/favorite-activity-scroll-sync.patch
+          git apply --recount --check .patches/favorite-activity-anchor-sync.patch
+          git apply --recount .patches/favorite-activity-anchor-sync.patch
           git diff --check
       - uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb
         with:
