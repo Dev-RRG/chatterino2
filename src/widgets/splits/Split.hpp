@@ -175,15 +175,19 @@ private:
     bool isMouseOver_{};
     bool isDragging_{};
 
+    // These members can be queried by SplitHeader while the header itself is
+    // being constructed. Keep them before header_ so their default
+    // initialization has already happened before SplitHeader receives `this`.
+    QWidget *favoriteActivityPane_{};
+    ChannelView *favoriteActivityView_{};
+    QToolButton *favoriteActivitySyncButton_{};
+    bool favoriteActivityScrollSyncGuard_{};
+
     QVBoxLayout *const vbox_;
     SplitHeader *const header_;
     PinnedMessageWidget *const pinnedBanner_;
     ChannelView *const view_;
     QSplitter *const activitySplitter_;
-    QWidget *favoriteActivityPane_{};
-    ChannelView *favoriteActivityView_{};
-    QToolButton *favoriteActivitySyncButton_{};
-    bool favoriteActivityScrollSyncGuard_{};
     SplitInput *const input_;
     SplitOverlay *const overlay_;
 
